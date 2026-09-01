@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "nombre": "Teclado mecánico",
+    "precio": 180000,
+    "stock": 25,
+    "categoria": "Periféricos",
+    "imagen": null
+  },
+  {
+    "id": 2,
+    "nombre": "Mouse inalámbrico",
+    "precio": 65000,
+    "stock": 40,
+    "categoria": "Periféricos",
+    "imagen": null
+  }
+]
