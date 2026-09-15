@@ -1,128 +1,809 @@
-//importacion del paquete de express, sistema moderno (import)
-import miExpress from "express"
-import "dotenv/config"
-import fs from "fs"
-import path from "path"
-import { fileURLToPath } from "url"
-
-//obtener __dirname equivalente en ES Modules
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-//creacion de mi aplicacion de express
-const miApp = miExpress()
-const miPuerto = process.env.MIPUERTO || 3333
-
-//middleware para poder leer JSON en el body de las peticiones
-miApp.use(miExpress.json())
-
-//ruta del archivo que simula nuestra base de datos
-const rutaDatos = path.join(__dirname, "datosProductos.json")
-
-//funcion auxiliar para leer los productos del archivo
+import "dotenv/config";
+import express from "express";
+import fs from "fs";
+import multer from "multer";
+import path from "path";
+ 
+const miApp = express();
+ 
+const miPuerto = process.env.MIPUERTO || 3333;
+ 
+const archivoProductos = "./datosProductos.json";
+ 
+ 
+// =====================================================
+// MIDDLEWARE
+// =====================================================
+ 
+miApp.use(express.json());
+ 
+ 
+// =====================================================
+// CONFIGURACIÓN DE MULTER
+// =====================================================
+ 
+// Carpeta donde se guardarán las imágenes
+const carpetaUploads = "./uploads";
+ 
+// Crear la carpeta si no existe
+if (!fs.existsSync(carpetaUploads)) {
+    fs.mkdirSync(carpetaUploads);
+}
+ 
+ 
+// Configuración del almacenamiento
+const almacenamiento = multer.diskStorage({
+ 
+    destination: (req, file, cb) => {
+        cb(null, carpetaUploads);
+    },
+ 
+    filename: (req, file, cb) => {
+ 
+        const extension = path.extname(file.originalname);
+ 
+        const nombreArchivo =
+            Date.now() +
+            "-" +
+            Math.round(Math.random() * 1E9) +
+            extension;
+ 
+        cb(null, nombreArchivo);
+    }
+ 
+});
+ 
+ 
+// Configuración de Multer
+const upload = multer({
+ 
+    storage: almacenamiento,
+ 
+    fileFilter: (req, file, cb) => {
+ 
+        const tiposPermitidos = [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/gif"
+        ];
+ 
+        if (tiposPermitidos.includes(file.mimetype)) {
+ 
+            cb(null, true);
+ 
+        } else {
+ 
+            cb(
+                new Error(
+                    "Solo se permiten imágenes JPG, PNG, WEBP o GIF"
+                )
+            );
+ 
+        }
+ 
+    },
+ 
+    limits: {
+        fileSize: 5 * 1024 * 1024
+    }
+ 
+});
+ 
+ 
+// =====================================================
+// MOSTRAR IMÁGENES
+// =====================================================
+ 
+miApp.use(
+    "/uploads",
+    express.static(path.resolve(carpetaUploads))
+);
+ 
+ 
+// =====================================================
+// LEER PRODUCTOS
+// =====================================================
+ 
 function leerProductos() {
-    const contenido = fs.readFileSync(rutaDatos, "utf-8")
-    return JSON.parse(contenido)
+ 
+    const datos = fs.readFileSync(
+        archivoProductos,
+        "utf-8"
+    );
+ 
+    return JSON.parse(datos);
+ 
 }
-
-//funcion auxiliar para guardar los productos en el archivo
+ 
+ 
+// =====================================================
+// GUARDAR PRODUCTOS
+// =====================================================
+ 
 function guardarProductos(productos) {
-    fs.writeFileSync(rutaDatos, JSON.stringify(productos, null, 2))
+ 
+    fs.writeFileSync(
+        archivoProductos,
+        JSON.stringify(productos, null, 2)
+    );
+ 
 }
-
-//endpoint raiz, no tiene ruta
-miApp.get("/", (req, res) => { res.send(`<h1>Api Rest Productos la 80</h1>`) })
-
-//GET /api/productos -> listar todos los productos
+ 
+ 
+// =====================================================
+// RUTA PRINCIPAL
+// =====================================================
+ 
+miApp.get("/", (req, res) => {
+ 
+    res.send(
+        "<h1>API REST Productos La 80 - ES Modules</h1>"
+    );
+ 
+});
+ 
+ 
+// =====================================================
+// GET TODOS LOS PRODUCTOS
+// =====================================================
+ 
 miApp.get("/api/productos", (req, res) => {
-    const productos = leerProductos()
-    res.json(productos)
-})
-
-//GET /api/productos/:id -> obtener un producto por su id
+ 
+    try {
+ 
+        const productos = leerProductos();
+ 
+        res.status(200).json(productos);
+ 
+    } catch (error) {
+ 
+        console.error(error);
+ 
+        res.status(500).json({
+            mensaje: "Error al obtener los productos"
+        });
+ 
+    }
+ 
+});
+ 
+ 
+// =====================================================
+// GET PRODUCTO POR ID
+// =====================================================
+ 
 miApp.get("/api/productos/:id", (req, res) => {
-    const productos = leerProductos()
-    const producto = productos.find(p => p.id === Number(req.params.id))
-
-    if (!producto) {
-        return res.status(404).json({ mensaje: "Producto no encontrado" })
+ 
+    try {
+ 
+        const productos = leerProductos();
+ 
+        const id = parseInt(req.params.id);
+ 
+        const producto = productos.find(
+            producto => producto.id === id
+        );
+ 
+ 
+        if (!producto) {
+ 
+            return res.status(404).json({
+                mensaje: "Producto no encontrado"
+            });
+ 
+        }
+ 
+ 
+        res.status(200).json(producto);
+ 
+    } catch (error) {
+ 
+        console.error(error);
+ 
+        res.status(500).json({
+            mensaje: "Error al buscar el producto"
+        });
+ 
     }
-
-    res.json(producto)
-})
-
-//POST /api/productos -> crear un producto nuevo
-miApp.post("/api/productos", (req, res) => {
-    const { nombre, precio, stock, categoria } = req.body
-
-    if (!nombre || precio === undefined || stock === undefined || !categoria) {
-        return res.status(400).json({ mensaje: "Bad Request: nombre, precio, stock y categoria son obligatorios" })
+ 
+});
+ 
+ 
+// =====================================================
+// POST - CREAR PRODUCTO
+// =====================================================
+ 
+miApp.post(
+    "/api/productos",
+    upload.single("imagen"),
+    (req, res) => {
+ 
+        try {
+ 
+            // ---------------------------------------------
+            // DEBUG: ver qué está llegando realmente
+            // ---------------------------------------------
+ 
+            console.log("BODY:", req.body);
+            console.log("FILE:", req.file);
+ 
+ 
+            const {
+                nombre,
+                precio,
+                stock,
+                categoria
+            } = req.body;
+ 
+ 
+            // ---------------------------------------------
+            // VALIDAR CAMPOS OBLIGATORIOS
+            // ---------------------------------------------
+ 
+            if (
+                nombre === undefined ||
+                nombre.trim() === "" ||
+ 
+                precio === undefined ||
+                precio === "" ||
+ 
+                stock === undefined ||
+                stock === "" ||
+ 
+                categoria === undefined ||
+                categoria.trim() === ""
+            ) {
+ 
+                return res.status(400).json({
+ 
+                    mensaje:
+                        "Nombre, precio, stock y categoria son obligatorios"
+ 
+                });
+ 
+            }
+ 
+ 
+            // ---------------------------------------------
+            // CONVERTIR PRECIO Y STOCK
+            // ---------------------------------------------
+ 
+            const precioNumero = Number(precio);
+ 
+            const stockNumero = Number(stock);
+ 
+ 
+            // ---------------------------------------------
+            // VALIDAR PRECIO
+            // ---------------------------------------------
+ 
+            if (
+                !Number.isFinite(precioNumero) ||
+                precioNumero <= 0
+            ) {
+ 
+                return res.status(400).json({
+ 
+                    mensaje:
+                        "El precio debe ser un número mayor a 0"
+ 
+                });
+ 
+            }
+ 
+ 
+            // ---------------------------------------------
+            // VALIDAR STOCK
+            // ---------------------------------------------
+ 
+            if (
+                !Number.isInteger(stockNumero) ||
+                stockNumero < 0
+            ) {
+ 
+                return res.status(400).json({
+ 
+                    mensaje:
+                        "El stock debe ser un entero positivo o 0"
+ 
+                });
+ 
+            }
+ 
+ 
+            // ---------------------------------------------
+            // LEER PRODUCTOS
+            // ---------------------------------------------
+ 
+            const productos = leerProductos();
+ 
+ 
+            // ---------------------------------------------
+            // CREAR ID
+            // ---------------------------------------------
+ 
+            const nuevoId = productos.length > 0
+ 
+                ? Math.max(
+                    ...productos.map(
+                        producto => producto.id
+                    )
+                ) + 1
+ 
+                : 1;
+ 
+ 
+            // ---------------------------------------------
+            // CREAR URL DE IMAGEN
+            // ---------------------------------------------
+ 
+            let imagen = null;
+ 
+ 
+            if (req.file) {
+ 
+                imagen =
+                    `/uploads/${req.file.filename}`;
+ 
+            }
+ 
+ 
+            // ---------------------------------------------
+            // CREAR PRODUCTO
+            // ---------------------------------------------
+ 
+            const nuevoProducto = {
+ 
+                id: nuevoId,
+ 
+                nombre: nombre.trim(),
+ 
+                precio: precioNumero,
+ 
+                stock: stockNumero,
+ 
+                categoria: categoria.trim(),
+ 
+                imagen: imagen
+ 
+            };
+ 
+ 
+            // ---------------------------------------------
+            // GUARDAR
+            // ---------------------------------------------
+ 
+            productos.push(nuevoProducto);
+ 
+            guardarProductos(productos);
+ 
+ 
+            // ---------------------------------------------
+            // RESPUESTA
+            // ---------------------------------------------
+ 
+            res.status(201).json({
+ 
+                mensaje:
+                    "Producto creado correctamente",
+ 
+                producto:
+                    nuevoProducto
+ 
+            });
+ 
+ 
+        } catch (error) {
+ 
+            console.error(error);
+ 
+            res.status(500).json({
+ 
+                mensaje:
+                    "Error al crear el producto"
+ 
+            });
+ 
+        }
+ 
     }
-
-    const productos = leerProductos()
-
-    const nuevoId = productos.length > 0
-        ? Math.max(...productos.map(p => p.id)) + 1
-        : 1
-
-    const nuevoProducto = {
-        id: nuevoId,
-        nombre,
-        precio,
-        stock,
-        categoria,
-        imagen: "sin imagen"
+);
+ 
+ 
+// =====================================================
+// PUT - ACTUALIZAR PRODUCTO
+// =====================================================
+ 
+miApp.put(
+    "/api/productos/:id",
+    upload.single("imagen"),
+    (req, res) => {
+ 
+        try {
+ 
+            const id =
+                parseInt(req.params.id);
+ 
+ 
+            const {
+                nombre,
+                precio,
+                stock,
+                categoria
+            } = req.body;
+ 
+ 
+            // ---------------------------------------------
+            // LEER PRODUCTOS
+            // ---------------------------------------------
+ 
+            const productos =
+                leerProductos();
+ 
+ 
+            // ---------------------------------------------
+            // BUSCAR PRODUCTO
+            // ---------------------------------------------
+ 
+            const posicion =
+                productos.findIndex(
+                    producto => producto.id === id
+                );
+ 
+ 
+            if (posicion === -1) {
+ 
+                return res.status(404).json({
+ 
+                    mensaje:
+                        "Producto no encontrado"
+ 
+                });
+ 
+            }
+ 
+ 
+            // ---------------------------------------------
+            // VALIDAR CAMPOS
+            // ---------------------------------------------
+ 
+            if (
+                nombre === undefined ||
+                nombre.trim() === "" ||
+ 
+                precio === undefined ||
+                precio === "" ||
+ 
+                stock === undefined ||
+                stock === "" ||
+ 
+                categoria === undefined ||
+                categoria.trim() === ""
+            ) {
+ 
+                return res.status(400).json({
+ 
+                    mensaje:
+                        "Nombre, precio, stock y categoria son obligatorios"
+ 
+                });
+ 
+            }
+ 
+ 
+            // ---------------------------------------------
+            // CONVERTIR DATOS
+            // ---------------------------------------------
+ 
+            const precioNumero =
+                Number(precio);
+ 
+            const stockNumero =
+                Number(stock);
+ 
+ 
+            // ---------------------------------------------
+            // VALIDAR PRECIO
+            // ---------------------------------------------
+ 
+            if (
+                !Number.isFinite(precioNumero) ||
+                precioNumero <= 0
+            ) {
+ 
+                return res.status(400).json({
+ 
+                    mensaje:
+                        "El precio debe ser un número mayor a 0"
+ 
+                });
+ 
+            }
+ 
+ 
+            // ---------------------------------------------
+            // VALIDAR STOCK
+            // ---------------------------------------------
+ 
+            if (
+                !Number.isInteger(stockNumero) ||
+                stockNumero < 0
+            ) {
+ 
+                return res.status(400).json({
+ 
+                    mensaje:
+                        "El stock debe ser un entero positivo o 0"
+ 
+                });
+ 
+            }
+ 
+ 
+            // ---------------------------------------------
+            // MANTENER IMAGEN ANTERIOR
+            // ---------------------------------------------
+ 
+            let imagen =
+                productos[posicion].imagen || null;
+ 
+ 
+            // ---------------------------------------------
+            // SI SUBE UNA NUEVA IMAGEN
+            // ---------------------------------------------
+ 
+            if (req.file) {
+ 
+                imagen =
+                    `/uploads/${req.file.filename}`;
+ 
+            }
+ 
+ 
+            // ---------------------------------------------
+            // ACTUALIZAR PRODUCTO
+            // ---------------------------------------------
+ 
+            productos[posicion] = {
+ 
+                id: id,
+ 
+                nombre: nombre.trim(),
+ 
+                precio: precioNumero,
+ 
+                stock: stockNumero,
+ 
+                categoria: categoria.trim(),
+ 
+                imagen: imagen
+ 
+            };
+ 
+ 
+            // ---------------------------------------------
+            // GUARDAR
+            // ---------------------------------------------
+ 
+            guardarProductos(productos);
+ 
+ 
+            // ---------------------------------------------
+            // RESPUESTA
+            // ---------------------------------------------
+ 
+            res.status(200).json({
+ 
+                mensaje:
+                    "Producto actualizado correctamente",
+ 
+                producto:
+                    productos[posicion]
+ 
+            });
+ 
+ 
+        } catch (error) {
+ 
+            console.error(error);
+ 
+            res.status(500).json({
+ 
+                mensaje:
+                    "Error al actualizar el producto"
+ 
+            });
+ 
+        }
+ 
     }
-
-    productos.push(nuevoProducto)
-    guardarProductos(productos)
-
-    res.status(201).json(nuevoProducto)
-})
-
-//PUT /api/productos/:id -> actualizar un producto existente
-miApp.put("/api/productos/:id", (req, res) => {
-    const { nombre, precio, stock, categoria } = req.body
-
-    if (!nombre || precio === undefined || stock === undefined || !categoria) {
-        return res.status(400).json({ mensaje: "Bad Request: nombre, precio, stock y categoria son obligatorios" })
+);
+ 
+ 
+// =====================================================
+// DELETE - ELIMINAR PRODUCTO
+// =====================================================
+ 
+miApp.delete(
+    "/api/productos/:id",
+    (req, res) => {
+ 
+        try {
+ 
+            const id =
+                parseInt(req.params.id);
+ 
+ 
+            const productos =
+                leerProductos();
+ 
+ 
+            // ---------------------------------------------
+            // BUSCAR PRODUCTO
+            // ---------------------------------------------
+ 
+            const posicion =
+                productos.findIndex(
+                    producto => producto.id === id
+                );
+ 
+ 
+            if (posicion === -1) {
+ 
+                return res.status(404).json({
+ 
+                    mensaje:
+                        "Producto no encontrado"
+ 
+                });
+ 
+            }
+ 
+ 
+            // ---------------------------------------------
+            // ELIMINAR PRODUCTO
+            // ---------------------------------------------
+ 
+            const productoEliminado =
+                productos.splice(
+                    posicion,
+                    1
+                )[0];
+ 
+ 
+            // ---------------------------------------------
+            // ELIMINAR IMAGEN DEL SERVIDOR
+            // ---------------------------------------------
+ 
+            if (productoEliminado.imagen) {
+ 
+                const nombreImagen =
+                    path.basename(
+                        productoEliminado.imagen
+                    );
+ 
+ 
+                const rutaImagen =
+                    path.join(
+                        carpetaUploads,
+                        nombreImagen
+                    );
+ 
+ 
+                if (fs.existsSync(rutaImagen)) {
+ 
+                    fs.unlinkSync(rutaImagen);
+ 
+                }
+ 
+            }
+ 
+ 
+            // ---------------------------------------------
+            // GUARDAR
+            // ---------------------------------------------
+ 
+            guardarProductos(productos);
+ 
+ 
+            // ---------------------------------------------
+            // RESPUESTA
+            // ---------------------------------------------
+ 
+            res.status(200).json({
+ 
+                mensaje:
+                    "Producto eliminado correctamente",
+ 
+                producto:
+                    productoEliminado
+ 
+            });
+ 
+ 
+        } catch (error) {
+ 
+            console.error(error);
+ 
+            res.status(500).json({
+ 
+                mensaje:
+                    "Error al eliminar el producto"
+ 
+            });
+ 
+        }
+ 
     }
-
-    const productos = leerProductos()
-    const indice = productos.findIndex(p => p.id === Number(req.params.id))
-
-    if (indice === -1) {
-        return res.status(404).json({ mensaje: "Producto no encontrado" })
+);
+ 
+ 
+// =====================================================
+// MANEJO DE ERRORES DE MULTER
+// =====================================================
+ 
+miApp.use((error, req, res, next) => {
+ 
+    if (error instanceof multer.MulterError) {
+ 
+        return res.status(400).json({
+ 
+            mensaje:
+                "Error al subir la imagen",
+ 
+            error:
+                error.message
+ 
+        });
+ 
     }
-
-    productos[indice] = {
-        ...productos[indice],
-        nombre,
-        precio,
-        stock,
-        categoria
+ 
+ 
+    if (error) {
+ 
+        return res.status(400).json({
+ 
+            mensaje:
+                error.message
+ 
+        });
+ 
     }
+ 
+ 
+    next();
+ 
+});
 
-    guardarProductos(productos)
-    res.json(productos[indice])
-})
+// =====================================================
+// Middleware
+// =====================================================
 
-//DELETE /api/productos/:id -> eliminar un producto por id
-miApp.delete("/api/productos/:id", (req, res) => {
-    const productos = leerProductos()
-    const indice = productos.findIndex(p => p.id === Number(req.params.id))
+miApp.use((req, res, next) => {
+    console.log(`Tiempo en milisegundos: ${Date.now()}`);
+    next();
+});
 
-    if (indice === -1) {
-        return res.status(404).json({ mensaje: "Producto no encontrado" })
+
+ 
+ 
+// =====================================================
+// SERVIDOR
+// =====================================================
+ 
+miApp.listen(
+    miPuerto,
+    () => {
+ 
+        console.log(
+            `SERVIDOR: http://localhost:${miPuerto}`
+        );
+ 
+        console.log(
+            `IMÁGENES: http://localhost:${miPuerto}/uploads`
+        );
+ 
     }
-
-    const eliminado = productos.splice(indice, 1)
-    guardarProductos(productos)
-
-    res.json({ mensaje: "Producto eliminado", producto: eliminado[0] })
-})
-
-//link del servidor, por donde se escucha las peticiones del usuario.
-miApp.listen(miPuerto, () => {
-    console.log(`SERVIDOR: http://localhost:${miPuerto}`)
-})
+);
+ 
