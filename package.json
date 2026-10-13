@@ -2,10 +2,10 @@
   "name": "crudex80",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/utileria/servers.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node --watch index.js"
+    "dev": "node --watch src/utileria/servers.js"
   },
   "keywords": [],
   "license": "ISC",
@@ -24,5 +24,11 @@
   "bugs": {
     "url": "https://github.com/sanlith340-droid/proyectoCrud80/issues"
   },
-  "homepage": "https://github.com/sanlith340-droid/proyectoCrud80#readme"
+  "homepage": "https://github.com/sanlith340-droid/proyectoCrud80#readme",
+  "devDependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "prisma": "^7.10.0",
+    "tsx": "^4.23.15"
+  }
 }
