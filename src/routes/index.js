@@ -2,7 +2,6 @@
 const { Router } = require("express");
 const usuariosRouter = require("./usuariosRoutes");
 const productosRouter = require ("./productosRoutes")
-const { rutaProductos } = require("../config/db");
 const enrutador = Router();
 
 //enrutador

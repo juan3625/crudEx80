@@ -1,4 +1,4 @@
-const productosModel = require("../models/productosModel");
+const productosModel = require("../modelsService/productosService");
 
 // Listar todos los productos
 const listarProductos = async (req, res) => {

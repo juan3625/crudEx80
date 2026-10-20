@@ -1,6 +1,6 @@
-const app = require('./app.js');
-const PORT = process.env.PORT || 3500;
+const app = require("../app");
+const PORT = process.env.MIPUERTO || process.env.PORT || 3500;
 
 app.listen(PORT, () => {
-    console.log(`servidor corriendo en el puerto http://localhost:${PORT}`);
+  console.log(`SERVIDOR EXPRESS: http://localhost:${PORT}`);
 });
